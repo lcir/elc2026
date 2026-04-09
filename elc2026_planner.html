@@ -135,6 +135,7 @@
   </div>
 </div>
 <div style="height:58px;"></div>
+<footer style="text-align:center;padding:14px;font-size:0.75rem;color:var(--muted);border-top:1px solid var(--border);">2026 &mdash; Lukáš Cír</footer>
 
 <script>
 const LABELS = {
@@ -464,6 +465,15 @@ function toggleBio(id, e) {
   arr.textContent = open ? '▼' : '▶';
 }
 
+function savePlan() {
+  localStorage.setItem('elc2026_plan', JSON.stringify([...selectedTalks]));
+}
+
+function loadPlan() {
+  try { return new Set(JSON.parse(localStorage.getItem('elc2026_plan') || '[]')); }
+  catch { return new Set(); }
+}
+
 function togglePlan(id, e) {
   e.stopPropagation();
   const talk = TALKS.find(t => t.id === id);
@@ -471,6 +481,7 @@ function togglePlan(id, e) {
   const card = document.getElementById('card-' + id);
   if (selectedTalks.has(id)) { selectedTalks.delete(id); card.classList.remove('selected'); }
   else { selectedTalks.add(id); card.classList.add('selected'); }
+  savePlan();
   renderPlan();
 }
 
@@ -518,7 +529,10 @@ document.getElementById('filterRow').addEventListener('click', e => {
   applyFilters();
 });
 
+selectedTalks = loadPlan();
 renderAll();
+selectedTalks.forEach(id => document.getElementById('card-'+id)?.classList.add('selected'));
+renderPlan();
 </script>
 </body>
 </html>
