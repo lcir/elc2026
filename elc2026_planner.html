@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ELC Conference 2026 — Plánovač</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --card: #1a1d27;
+      --card-hover: #22263a;
+      --border: #2a2d3e;
+      --accent: #6c63ff;
+      --accent2: #00d2ff;
+      --text: #e8eaf6;
+      --muted: #8b90aa;
+      --selected-bg: #1e1a3a;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    header { background: linear-gradient(135deg, #1a1d27 0%, #0f1117 100%); border-bottom: 1px solid var(--border); padding: 28px 32px 20px; }
+    header h1 { font-size: 1.7rem; font-weight: 700; background: linear-gradient(135deg, #6c63ff, #00d2ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 4px; }
+    header p { color: var(--muted); font-size: 0.92rem; }
+
+    .filter-section { padding: 16px 32px; background: var(--card); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
+    .filter-section h2 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 10px; }
+    .filter-row { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; }
+    .filter-btn { display: inline-flex; align-items: center; gap: 5px; padding: 5px 13px; border-radius: 20px; border: 1.5px solid var(--border); background: transparent; color: var(--muted); cursor: pointer; font-size: 0.8rem; font-weight: 500; transition: all 0.18s; white-space: nowrap; }
+    .filter-btn:hover { border-color: var(--accent); color: var(--text); }
+    .filter-btn.active { color: #fff; border-color: transparent; }
+    .filter-btn.clear-btn { background: transparent; border-color: #444; color: var(--muted); }
+    .filter-btn.clear-btn:hover { border-color: #888; color: var(--text); }
+
+    .main { display: grid; grid-template-columns: 1fr 1fr; }
+    @media (max-width: 900px) { .main { grid-template-columns: 1fr; } }
+    .column { border-right: 1px solid var(--border); min-height: calc(100vh - 160px); }
+    .column:last-child { border-right: none; }
+    .column-header { padding: 14px 22px; border-bottom: 1px solid var(--border); background: rgba(108,99,255,0.05); }
+    .column-header h3 { font-size: 0.95rem; font-weight: 600; }
+    .column-header span { font-size: 0.78rem; color: var(--muted); }
+
+    .talk-card { padding: 13px 22px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.15s; position: relative; }
+    .talk-card:hover { background: var(--card-hover); }
+    .talk-card.selected { background: var(--selected-bg); }
+    .talk-card.selected::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: linear-gradient(180deg, #6c63ff, #00d2ff); border-radius: 0 2px 2px 0; }
+    .talk-card.dimmed { opacity: 0.2; pointer-events: none; }
+    .talk-card.break-card { background: rgba(255,255,255,0.02); cursor: default; }
+    .talk-card.break-card:hover { background: rgba(255,255,255,0.02); }
+
+    .talk-time { font-size: 0.7rem; color: var(--accent2); font-weight: 600; margin-bottom: 3px; }
+    .talk-title { font-size: 0.9rem; font-weight: 600; line-height: 1.35; margin-bottom: 5px; }
+    .talk-speaker { font-size: 0.78rem; color: var(--muted); margin-bottom: 7px; }
+    .talk-speaker strong { color: #c5c9e0; }
+
+    .labels { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 7px; }
+    .label { font-size: 0.68rem; padding: 2px 8px; border-radius: 10px; font-weight: 500; white-space: nowrap; }
+
+    .talk-desc { font-size: 0.78rem; color: #9da3bc; line-height: 1.55; margin-bottom: 6px; }
+
+    .bio-toggle { font-size: 0.7rem; color: var(--accent); cursor: pointer; display: inline-flex; align-items: center; gap: 4px; margin-top: 2px; background: none; border: none; padding: 0; }
+    .bio-toggle:hover { color: #00d2ff; }
+    .bio-text { display: none; font-size: 0.77rem; color: var(--muted); line-height: 1.55; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+    .bio-text.visible { display: block; }
+
+    .plan-btn { position: absolute; right: 14px; top: 13px; background: none; border: none; cursor: pointer; font-size: 1.05rem; opacity: 0.25; transition: opacity 0.15s, transform 0.15s; line-height: 1; }
+    .plan-btn:hover { opacity: 0.7; transform: scale(1.2); }
+    .talk-card.selected .plan-btn { opacity: 1; }
+
+    .plan-summary { position: fixed; bottom: 0; left: 0; right: 0; background: #13162a; border-top: 2px solid var(--accent); padding: 9px 22px; display: flex; align-items: center; gap: 12px; z-index: 200; flex-wrap: wrap; }
+    .plan-summary h4 { font-size: 0.8rem; color: var(--accent); white-space: nowrap; }
+    .plan-chips { display: flex; flex-wrap: wrap; gap: 5px; flex: 1; }
+    .plan-chip { font-size: 0.72rem; padding: 3px 9px; border-radius: 12px; background: var(--selected-bg); border: 1px solid var(--accent); color: var(--text); white-space: nowrap; cursor: pointer; }
+    .plan-empty { font-size: 0.78rem; color: var(--muted); }
+
+    .lbl-ai       { background: rgba(0,210,255,0.12); color: #00d2ff; border: 1px solid rgba(0,210,255,0.3); }
+    .lbl-team     { background: rgba(255,190,60,0.1);  color: #ffbe3c; border: 1px solid rgba(255,190,60,0.3); }
+    .lbl-mindset  { background: rgba(168,108,255,0.12);color: #a86cff; border: 1px solid rgba(168,108,255,0.3); }
+    .lbl-strategy { background: rgba(52,211,153,0.1);  color: #34d399; border: 1px solid rgba(52,211,153,0.3); }
+    .lbl-culture  { background: rgba(251,113,133,0.1); color: #fb7185; border: 1px solid rgba(251,113,133,0.3); }
+    .lbl-comms    { background: rgba(251,191,36,0.1);  color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); }
+    .lbl-career   { background: rgba(96,165,250,0.1);  color: #60a5fa; border: 1px solid rgba(96,165,250,0.3); }
+    .lbl-em       { background: rgba(167,139,250,0.1); color: #a78bfa; border: 1px solid rgba(167,139,250,0.3); }
+    .lbl-scaling  { background: rgba(52,211,153,0.08); color: #6ee7b7; border: 1px solid rgba(52,211,153,0.25); }
+
+    .filter-btn[data-label="ai"].active       { background: rgba(0,210,255,0.18);   border-color: #00d2ff; color: #00d2ff; }
+    .filter-btn[data-label="team"].active     { background: rgba(255,190,60,0.15);  border-color: #ffbe3c; color: #ffbe3c; }
+    .filter-btn[data-label="mindset"].active  { background: rgba(168,108,255,0.18); border-color: #a86cff; color: #a86cff; }
+    .filter-btn[data-label="strategy"].active { background: rgba(52,211,153,0.15);  border-color: #34d399; color: #34d399; }
+    .filter-btn[data-label="culture"].active  { background: rgba(251,113,133,0.15); border-color: #fb7185; color: #fb7185; }
+    .filter-btn[data-label="comms"].active    { background: rgba(251,191,36,0.15);  border-color: #fbbf24; color: #fbbf24; }
+    .filter-btn[data-label="career"].active   { background: rgba(96,165,250,0.15);  border-color: #60a5fa; color: #60a5fa; }
+    .filter-btn[data-label="em"].active       { background: rgba(167,139,250,0.15); border-color: #a78bfa; color: #a78bfa; }
+    .filter-btn[data-label="scaling"].active  { background: rgba(52,211,153,0.12);  border-color: #6ee7b7; color: #6ee7b7; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>ELC Conference 2026 — Plánovač</h1>
+  <p>16. dubna 2026 · Praha · Filtruj labely a ⭐ označ přednášky, které chceš navštívit</p>
+</header>
+
+<div class="filter-section">
+  <h2>Filtrovat podle tématu</h2>
+  <div class="filter-row" id="filterRow">
+    <button class="filter-btn" data-label="ai">🤖 AI &amp; Tech</button>
+    <button class="filter-btn" data-label="em">🏗️ Eng. Management</button>
+    <button class="filter-btn" data-label="mindset">🧠 Leadership Mindset</button>
+    <button class="filter-btn" data-label="team">👥 Team Building</button>
+    <button class="filter-btn" data-label="strategy">📊 Strategie &amp; Byznys</button>
+    <button class="filter-btn" data-label="culture">🌱 Kultura &amp; Hodnoty</button>
+    <button class="filter-btn" data-label="comms">💬 Komunikace</button>
+    <button class="filter-btn" data-label="career">🚀 Kariérní růst</button>
+    <button class="filter-btn" data-label="scaling">🌍 Škálování &amp; Huby</button>
+    <button class="filter-btn clear-btn" onclick="clearFilters()">✕ Vše</button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="column">
+    <div class="column-header"><h3>🎤 Hlavní stage</h3><span>14 přednášek · celý den</span></div>
+    <div id="mainStageCards"></div>
+  </div>
+  <div class="column">
+    <div class="column-header"><h3>🛠️ Workshop stage</h3><span>18 workshopů · paralelně</span></div>
+    <div id="workshopCards"></div>
+  </div>
+</div>
+
+<div class="plan-summary" id="planSummary">
+  <h4>⭐ Můj plán</h4>
+  <div class="plan-chips" id="planChips">
+    <span class="plan-empty">Klikni na ⭐ u přednášky a přidej ji do plánu</span>
+  </div>
+</div>
+<div style="height:58px;"></div>
+
+<script>
+const LABELS = {
+  ai:       { emoji:'🤖', text:'AI & Tech',           cls:'lbl-ai' },
+  em:       { emoji:'🏗️', text:'Eng. Management',     cls:'lbl-em' },
+  mindset:  { emoji:'🧠', text:'Leadership Mindset',  cls:'lbl-mindset' },
+  team:     { emoji:'👥', text:'Team Building',        cls:'lbl-team' },
+  strategy: { emoji:'📊', text:'Strategie & Byznys',  cls:'lbl-strategy' },
+  culture:  { emoji:'🌱', text:'Kultura & Hodnoty',   cls:'lbl-culture' },
+  comms:    { emoji:'💬', text:'Komunikace',           cls:'lbl-comms' },
+  career:   { emoji:'🚀', text:'Kariérní růst',        cls:'lbl-career' },
+  scaling:  { emoji:'🌍', text:'Škálování & Huby',    cls:'lbl-scaling' },
+};
+
+const TALKS = [
+  // ── MAIN STAGE ──────────────────────────────────────────────────────────
+  {
+    id:'ms1', stage:'main', time:'9:15 – 9:25', isBreak:false,
+    title:'Opening Keynote',
+    speaker:'Anna Kožuch', role:'Co-Founder & CEO @ ELC',
+    labels:[],
+    description:'Úvodní slovo k ELC Conference 2026.',
+    bio:'Community-first tech leader a CEO Engineering Leaders Community. Propojuje ambiciózní inženýry, odvážné nápady a leadership lekce z praxe. Část stratég, část vypravěčka, část budovatelka komunity — mění meetupy na pohyby a sítě na trvalý dopad.'
+  },
+  {
+    id:'ms2', stage:'main', time:'9:25 – 9:50', isBreak:false,
+    title:'Smart but Not Wise: Path to AI-Native Engineering Leader',
+    speaker:'Aleodor Tabarcea', role:'Engineering Manager @ Stripe',
+    labels:['ai','mindset'],
+    description:'Aleodor sdílí třívrstvý decision framework pro proměnu moderního EM v "Superhuman Orchestrator." Nestačí být jen chytrý — v éře AI musíš být moudrý. Jak propojit technické rozhodování s produktovým myšlením a lidskou moudrostí tak, aby AI amplifikovala tvůj leadership, ne ho nahrazovala.',
+    bio:'EM v Stripe, vedoucí nástroje pro operations a risk. 10+ let zkušeností z Bitdefender, Adobe a Snyk. Architektoval produkty dosahující milionů uživatelů. Ve 24 vstoupil do managementu. Absolvent Stanford GSB. Mentor startupů a studentů v Bukurešti.'
+  },
+  {
+    id:'ms3', stage:'main', time:'9:50 – 10:15', isBreak:false,
+    title:'The Collapse of the Product Trio',
+    speaker:'David Teodorescu', role:'Senior Product Designer @ Meta',
+    labels:['strategy','culture'],
+    description:'Tradiční hranice mezi Product, Design a Engineering se rozpadají. S nástupem AI se design vyvíjí od statických rozhraní ke stavbě a nasazování funkčního softwaru. Čistá technická exekuce přestává být diferenciátorem. Co to znamená pro product trio a jak lídři musí adaptovat svůj přístup?',
+    bio:'Product design leader v Meta pracující na jednom z mála $100B+ digitálních produktů světa. Pozadí v reklamě (Saatchi & Saatchi), design role v Fitbit a Amplicare (San Francisco, New York, Bukurešť). Spoluzakladatel health startup s Red Herring award. Zmíněn v TechCrunch, Inc. Magazine a TNW.'
+  },
+  {
+    id:'ms4', stage:'main', time:'10:15 – 10:40', isBreak:false,
+    title:'Decide Like a Senior Leader: Building Strong Decision-Making Habits',
+    speaker:'Michal Poczwardowski', role:'Founder @ Perspectiveship',
+    labels:['mindset','strategy'],
+    description:'Technické dovednosti tě dostaly do leadership role — ale rozhodovací schopnosti definují tvoji kariéru. Problém není, že děláš špatná rozhodnutí. Je to v tom, že rozhoduješ jako individual contributor, ne jako senior lídr. Michal ukáže jak rozvinout návyky, které odlišují ty nejžádanější lídry.',
+    bio:'Google Summer of Code student → EM po dobu 8 let vedoucí týmy i celé tech divize. Nyní mentoruje engineering lídry v live kohortách. Pro newsletter Perspectiveship napsal 100+ článků o mental models a decision-making.'
+  },
+  {
+    id:'break1', stage:'main', time:'10:40 – 11:10', isBreak:true,
+    title:'☕ Coffee Break', speaker:'', role:'', labels:[], description:'', bio:''
+  },
+  {
+    id:'ms5', stage:'main', time:'11:10 – 11:35', isBreak:false,
+    title:'The Tech Leader Profile Nobody Wants to Hire in 2026',
+    speaker:'Michal Matyjek', role:'Sr. Engineering Manager @ Netflix',
+    labels:['career','mindset'],
+    description:'Co jsem se naučil při najímání v Google a Netflix jako EM? Před deseti lety stačila technická hloubka. V roce 2026 je whiteboarding škálovatelného distribuovaného systému jen vstupenka. Michal rozebere, co odlišuje lídry, které všichni chtějí najmout — od těch, kteří zůstanou bez práce.',
+    bio:'Warsaw-based EM v Netflix vedoucí Games Engineering v Polsku. Dříve Google a startupy — infrastruktura, security, DevOps. Silné zaměření na growth lidí a exekuci.'
+  },
+  {
+    id:'ms6', stage:'main', time:'11:35 – 12:00', isBreak:false,
+    title:'I\'ve Built 3 Large Technology Hubs in CE: A Full Guide',
+    speaker:'Krzysztof Ras', role:'Head of Engineering @ Keyrock',
+    labels:['scaling','em'],
+    description:'Příběhy budování hubů v BitPanda, Fandom a D360 Bank od nuly na stovky inženýrů pro globální firmy. Co fungovalo, co selhalo a proč většina hubů přestane růst po druhém roce. Kompletní průvodce bez příkras — co skutečně potřebuješ vědět před tím, než to zkusíš.',
+    bio:'Polský tech leader s 20+ lety zkušeností. Zakládal engineering huby v Polsku, vedl distribuované týmy po celé Evropě a na Středním východě (kde pomohl spustit jeden z prvních digital banking produktů v regionu). Vášnivý mentor a rozvíjitel talentů.'
+  },
+  {
+    id:'ms7', stage:'main', time:'12:00 – 12:25', isBreak:false,
+    title:'Building AI Into Critical Systems',
+    speaker:'Tatiana Stantonian', role:'Principal Engineer @ The Financial Times',
+    labels:['ai','em'],
+    description:'Zjisti, jak Financial Times využil AI k personalizaci paywallů a snížení churn — včetně architektury, kompromisů a lekcí naučených v produkci. Tatiana nedávno vedla implementaci dvou velkých AI projektů v FT a sdílí praktické zkušenosti z kritického produkčního systému, kde chyba stojí důvěryhodnost.',
+    bio:'Principal Engineer v The Financial Times, Londýn. Pracuje přes týmy na systémech a směřování FT.com Customer Lifecycle oblasti (subscription growth a retence). Pozadí v Government Digital Service. 10+ let v software engineering. Vede FT.com technologický blog.'
+  },
+  {
+    id:'ms8', stage:'main', time:'12:25 – 12:50', isBreak:false,
+    title:'Reading the Room: The Missing Competency in Tech Leadership',
+    speaker:'Carol Palombini', role:'Tech Leadership Coach & Consultant',
+    labels:['comms','mindset'],
+    description:'Mnoho technických lídrů odvádí výbornou práci a přináší výsledky — přesto bojují s tím, aby jejich myšlenky byly vyslyšeny a jejich vliv byl cítit. Spoléhají na logiku, odbornost a dobré úmysly — a diví se, proč vliv nenásleduje. Carol přerámovává "čtení místnosti" jako klíčovou leadership kompetenci pro tech profesionály.',
+    bio:'Tech Leadership Coach, konzultantka a psycholožka s 10+ lety koučování tech lídrů. Bývalá CHRO v tech firmě. Pomáhá lídrům posílit executive presence, komunikovat s dopadem a strategicky se pozicovat. Zakladatelka Palombini Consulting.'
+  },
+  {
+    id:'lunch', stage:'main', time:'12:50 – 13:50', isBreak:true,
+    title:'🍽️ Lunch', speaker:'', role:'', labels:[], description:'', bio:''
+  },
+  {
+    id:'ms9', stage:'main', time:'13:50 – 14:15', isBreak:false,
+    title:'From Talent Pool to Product Powerhouse: How Central Europe Won Microsoft\'s Trust',
+    speaker:'Vojta Vondra', role:'Partner Director of Engineering @ Microsoft',
+    labels:['scaling','strategy'],
+    description:'Před deseti lety byla střední Evropa "místo se skvělými vývojáři." Dnes Microsoft přesouvá kritické produkty sem — včetně Microsoft Teams. Vojtech Vondra, první lokálně povýšený Microsoft Partner Director v CEE, sdílí přesný postup, jak se to stalo a co to vyžadovalo.',
+    bio:'Partner Director of Engineering v Microsoft Entra Edge and Quality v Praze. Týmy budují Microsoft Graph, chrání každý consumer a enterprise authentication request. Dříve vedl product engineering v Productboard.'
+  },
+  {
+    id:'ms10', stage:'main', time:'14:15 – 14:40', isBreak:false,
+    title:'What\'s my job again? Developing self-management',
+    speaker:'Cate Huston', role:'CTO @ Twill',
+    labels:['mindset','em'],
+    description:'Čím výše v org chartu, tím méně inputu dostáváš od vlastního manažera — a tím více musíš rozšiřovat svůj range jako lídr. Self-management je pochopení toho, co znamená pro tebe prosperovat v leadership roli. A je to také něco, co musíš nainstalovat do lidí, kteří ti reportují.',
+    bio:'Seasoned engineering leader, autorka "The Engineering Leader" (O\'Reilly). Dříve Director of Engineering v DuckDuckGo, zkušenosti z Google a Automattic. Píše a přednáší o engineering leadershipu, škálování týmů, developer experience a kariérním růstu.'
+  },
+  {
+    id:'ms11', stage:'main', time:'14:40 – 15:05', isBreak:false,
+    title:'What am I doing here? — Engineering Management in the Age of Agents',
+    speaker:'Rizwan Iqbal', role:'Director of Engineering @ Superhuman',
+    labels:['ai','em'],
+    description:'Co zbývá engineering managementu, když AI agenti přebírají část kódování? Rizwan sdílí zkušenosti z Superhuman — firmy na čele AI adopce — o tom, jak se mění role EM a co to prakticky znamená pro lídry, týmy a způsob organizace práce v éře agentů.',
+    bio:'Engineering leader v Superhuman (Berlin). Vede týmy zodpovědné za Mac, Windows, Browser Extensions, Web a mobilní platformy používané miliony. Vášeň pro building strong teams a zjednodušování komplexních systémů.'
+  },
+  {
+    id:'break2', stage:'main', time:'15:05 – 15:35', isBreak:true,
+    title:'☕ Coffee Break', speaker:'', role:'', labels:[], description:'', bio:''
+  },
+  {
+    id:'ms12', stage:'main', time:'15:35 – 15:55', isBreak:false,
+    title:'Confessions of a Teal CEO: What Engineering Managers Can Steal From a Company With No Hierarchy',
+    speaker:'Jan Cerny', role:'CEO @ Applifting',
+    labels:['culture','em'],
+    description:'Co se stane, když CEO může být přehlasován vlastními vývojáři? Jan vede Applifting — 200člověkovou freedom-based software firmu, kde pravidla leadershipu vypadají jinak než kdekoli jinde. Sdílí upřímný příběh své cesty: staré chyby i principy, které změnily vše.',
+    bio:'CEO Applifting. Po více než dekádě v klasickém top-down managementu (EM, Department Lead) přišel do Applifting před třemi lety. Na misi propojit strukturu a škálovatelnost s duchem Teal organizací.'
+  },
+  {
+    id:'ms13', stage:'main', time:'15:55 – 16:15', isBreak:false,
+    title:'Debugging Self-Doubt: A Framework for Building Confidence',
+    speaker:'Natalia Nazaruk', role:'Engineering Squad Lead @ Kingfisher',
+    labels:['mindset','career'],
+    description:'Sebedůvěra nezmizí s seniorností — ukazuje se na high-stakes meetinzích, odložených rozhodnutích a zjemněném feedbacku. Natalia představuje Confidence Debugging Framework (CDF) — praktický, inženýrsky inspirovaný přístup k porozumění a zvládání pochybností v leadershipu. Zachází s důvěrou jako se systémem.',
+    bio:'Engineering Squad Lead s pozadím v mobile development. Najímá a onboarduje inženýry napříč časovými zónami, pracuje s plně remote týmy. Aktivní conference speaker a community builder sdílející praktické lekce z hands-on engineering leadershipu.'
+  },
+  {
+    id:'ms14', stage:'main', time:'16:15 – 16:35', isBreak:false,
+    title:'Building a Creator Ecosystem: The Art of Letting Go',
+    speaker:'Jan Zenisek', role:'VP of Product @ Apify',
+    labels:['strategy','culture'],
+    description:'Jak vybudovat ekosystém tvůrců — a naučit se pustit kontrolu a nechat komunitu převzít produktový rozvoj. Zkušenosti z budování Apify Store: oboustranného marketplace pro indie vývojáře, který změnil obchodní model firmy.',
+    bio:'VP of Product v Apify (web scraping & AI agent platforma). Před tím budoval Edge AI od R&D po trh, pomáhal startupům najít PMF a vedl transformační projekty pro IBM. Pozadí v IT a International Security, obsese pro skvělé produkty.'
+  },
+  {
+    id:'ms15', stage:'main', time:'16:35 – 16:55', isBreak:false,
+    title:'High Agency Is the New IQ',
+    speaker:'Tomas Rehor', role:'Head of Engineering @ Aisle',
+    labels:['mindset','em'],
+    description:'AI zpřístupňuje inteligenci. Agency — iniciativa, vlastnictví, schopnost jednat bez čekání na povolení — je to, co zbývá jako skutečný diferenciátor. Tomas argumentuje, že high agency je nové IQ pro engineering lídry v roce 2026 a ukazuje, jak ji rozvíjet v sobě i ve svých týmech.',
+    bio:'Head of Engineering v AISLE (AI-native cybersecurity). 25 let v oboru — Skype, Microsoft, Pipedrive. Budoval a škáloval B2C i B2B SaaS. Prahu-based, formovaný zkušeností s Silicon Valley týmy. Praktický a people-centric leadership styl.'
+  },
+  {
+    id:'ms16', stage:'main', time:'16:55 – 17:05', isBreak:false,
+    title:'Closing Remarks',
+    speaker:'Marian Kamenistak', role:'Founder @ ELC',
+    labels:[],
+    description:'Závěrečné slovo konference.',
+    bio:'Silicon-Valley-seasoned tech leader, coach a zakladatel Engineering Leaders Community. Mentoroval 200+ lídrů, přednášel na 100+ akcích.'
+  },
+  {
+    id:'afterparty', stage:'main', time:'17:05 – 20:00', isBreak:true,
+    title:'🎉 Afterparty', speaker:'', role:'', labels:[], description:'', bio:''
+  },
+
+  // ── WORKSHOPS ───────────────────────────────────────────────────────────
+  {
+    id:'ws1', stage:'workshop', time:'9:30 – 10:40', isBreak:false,
+    title:'What Your Manager Evaluates Before Promoting You: IC → Manager → Director',
+    speaker:'Limor Bergman Gross', role:'Former Dir. of Engineering @ LBG Consulting',
+    labels:['career','em'],
+    description:'Mnoho inženýrů je povýšeno za exekuci, ale bojuje v managementu nebo senior leadership rolích. Workshop odhalí, co se skutečně mění na každé úrovni — IC → Manager → Director — jaká kritéria manažeři hodnotí a kde se lídři nejvíce zasekávají.',
+    bio:'Executive Leadership Coach a former Director of Engineering s 20+ lety v tech. Vedla a škálovala engineering týmy. Pracuje s EM a direktory na skutečných výzvách růstu — co se mění na každé úrovni, kde se lídři zasekávají a jak zvyšovat dopad bez burn outu.'
+  },
+  {
+    id:'ws2', stage:'workshop', time:'9:30 – 10:40', isBreak:false,
+    title:'Most 1:1s Are Just Surviving. Let\'s Change That!',
+    speaker:'Ladislav Novak', role:'CEO @ Jablotron',
+    labels:['comms','em'],
+    description:'Naučíš se diagnostikovat, co je v tvých 1:1 rozbitého, a přebudovat je na nejcennějších 30 minut v kalendáři. Většina lídrů ví, že 1:1 jsou důležité — přesto jsou to většinou status updaty, nepříjemná ticha nebo recurring slot, který obě strany tajně chtějí zrušit. Formát není problém. Návyky jsou.',
+    bio:'CEO JABLOTRON — české security firmy s 35+ lety historie, produkty důvěryhodné pro miliony ve 70+ zemích. Kariéra: Developer → Architect → Team lead → Engineering Manager → CTO → CEO. Na každém stupni zanechal fungující systém, který dál přinášel výsledky.'
+  },
+  {
+    id:'ws3', stage:'workshop', time:'9:30 – 10:40', isBreak:false,
+    title:'From Doing OK to Doing Great: A 180-Day Playbook for High Performing Team',
+    speaker:'Nithin SS', role:'Head of QA @ Lodgify',
+    labels:['team','em'],
+    description:'Engineering týmy neselhávají — stávají se demotivovanými neviditelným třením, které není vždy viditelné zevnitř. Tyto týmy shipují práci a udržují systémy v chodu. Přesto mnohé operují pod svým skutečným potenciálem. Workshop ukazuje 180denní playbook jak to změnit.',
+    bio:'Head of QA v Lodgify (Spain-based). 10+ let pomáhá engineering týmům škálovat kvalitu a proměnit QA ve strategickou výhodu. Provozuje Synapse QA a newsletter Now To Next pro lídry a týmy.'
+  },
+  {
+    id:'ws4', stage:'workshop', time:'11:10 – 12:20', isBreak:false,
+    title:'The AI Talent Gap Nobody\'s Talking About',
+    speaker:'Alex Ponomarev', role:'Founder & CEO @ Volt',
+    labels:['ai','team'],
+    description:'Nejtěžší role k obsazení není "AI inženýr" — je to někdo, kdo umí orchestrovat AI workflows a řídit agent teams. Workshop ukáže proč tato sada dovedností na trhu téměř neexistuje, jak se liší od tradičního EM a jak tento gap překlenout ve svém týmu ještě letos.',
+    bio:'Founder & CEO Volt. 20+ let budování a škálování globálních tech firem. Vede týmy budující AI-native intelligence layers pro venture capital firmy. Vydává "Thriving in Engineering" — praktické frameworky pro engineering lídry v komplexitě.'
+  },
+  {
+    id:'ws5', stage:'workshop', time:'11:10 – 12:20', isBreak:false,
+    title:'The $$$ Behind the Code: How Technical Leaders Win Budget Conversations',
+    speaker:'Viktor Didenchuk', role:'Lead Technical Program Manager @ JPMorgan',
+    labels:['strategy','comms'],
+    description:'Kdy naposledy vzbudil tvůj refactoring nápad nadšení u senior leadership? PaaS může být technický triumf, ale pro CFO vypadá jako velký výdaj. Workshop ukazuje jak přeložit technické iniciativy do jazyka byznysu a vyhrát rozpočtové konverzace s C-levelem.',
+    bio:'Staff Technical Program Manager v JPMorgan. Překlenovatel propasti mezi fintech strategií a technickou realitou. Transformuje komplexní vize v jasné roadmapy, balancuje high-stakes regulaci s potřebou rychlosti. Přesouval core banking do cloudu, škáloval masivní datové platformy.'
+  },
+  {
+    id:'ws6', stage:'workshop', time:'11:10 – 12:20', isBreak:false,
+    title:'Stop Apologizing for Your Codebase: Taking Radical Ownership of Tech Debt',
+    speaker:'Petr Krebs', role:'Head of Engineering @ Make',
+    labels:['culture','strategy'],
+    description:'Inženýři prosí o refactoring. Byznys potřebuje shipovat hodnotu hned. Ty jsi uvízl uprostřed. Je čas přestat se cítit jako oběť svého legacy codebasu a místo toho vzít radikální odpovědnost za tech debt — a proměnit ho ve strategickou páku.',
+    bio:'Head of Engineering for Growth & Monetization v Make (workflow automation platforma). 20+ let v softwaru — geospatial systémy, cybersecurity, data platformy, product-led growth. Avast, Productboard. Aktivní mentor přes Femme Palette.'
+  },
+  {
+    id:'ws7', stage:'workshop', time:'14:00 – 14:50', isBreak:false,
+    title:'Burn Your Playbook: Context is Your Leadership Strategy',
+    speaker:'Daniel Ondruj', role:'Senior Engineering Manager @ Rohlik',
+    labels:['mindset','em'],
+    description:'Skvělí engineering lídři nekopírují minulé úspěchy — adaptují se. Co fungovalo v high-growth scale-upu může být toxické v korporátní transformaci a naopak. Interaktivní workshop rozebírá mýtus "univerzálního" leadership playbooků a nahrazuje ho kontextem jako primární strategií.',
+    bio:'Engineering leader s téměř 15 lety v tech průmyslu. Překlenovatel propasti mezi hands-on software craftsmanship a high-level strategickým leadershipem. Preferuje pragmatismus nad procesem nebo emocemi.'
+  },
+  {
+    id:'ws8', stage:'workshop', time:'14:00 – 14:50', isBreak:false,
+    title:'Why the Conversation You\'re Not Having Is Having You!',
+    speaker:'Goran Hielscher', role:'Leadership Communication Trainer @ THE INSPIRACY GROUP',
+    labels:['comms'],
+    description:'Postavil jsi systémy zvládající miliony requestů za sekundu. Škáloval jsi infrastrukturu světové třídy. Ale existuje konverzace, kterou jsi nikdy neměl — a ona tě ovládá. Workshop dělá neviditelné komunikační vzorce viditelné a zvládnutelné.',
+    bio:'Leadership coach, experience designer a keynote speaker. Zaměřený na sílu narativu pro lídry. Zpřístupňuje neviditelné komunikační vzorce. 20+ let práce s Bosch, Lufthansa, Swisscom, Austrian Airlines. Jeho brand "The Relephant" = pojmenovat slona v místnosti dřív, než pojmenuje tebe.'
+  },
+  {
+    id:'ws9', stage:'workshop', time:'14:00 – 14:50', isBreak:false,
+    title:'Complexity Is a Feature. Now What?',
+    speaker:'Nilesh Kulkarni', role:'Sr. Engineering Manager @ AccionLabs',
+    labels:['em','strategy'],
+    description:'AWS padá. Azure následuje. Půlka internetu se rozbije. Tohle není bug — je to systém fungující jak byl navržen. Workshop přestane předstírat, že komplexitu lze eliminovat, a místo toho ukáže jak se v ní orientovat jako engineering lídr a využít ji jako feature.',
+    bio:'Engineering Leader v Accion Labs Veracode s 18+ lety zkušeností v software engineering a cloud-native vývoji. Specialista na AppSec a AWS cloud architekturu. Vede cross-functional týmy, definuje technology roadmapy, vášnivý pro developer productivity a strategic tooling.'
+  },
+  {
+    id:'ws10', stage:'workshop', time:'14:50 – 15:30', isBreak:false,
+    title:'Becoming the Villain: Manipulation and Politics in the Corporate Environment',
+    speaker:'Jan Sovka', role:'Product & Strategy Advisor @ BigHub',
+    labels:['comms','strategy'],
+    description:'Hands-on workshop pro inženýry a tech lídry, kteří chtějí pochopit proč racionální argumenty a dobrá data tak často nevyhrávají. Interaktivním cvičením zažiješ, že existuje jiný způsob jak věci fungují — a naučíš se v tom navigovat.',
+    bio:'Product & Strategy Advisor v BigHub. Rozhodoval z obou stran: u board table definoval strategii i na straně dodavatele ji realizoval. Zkušenosti z Košík.cz, GoodData a IBM. Kombinuje datové a technické pozadí s byznysovým úsudkem.'
+  },
+  {
+    id:'ws11', stage:'workshop', time:'14:50 – 15:30', isBreak:false,
+    title:'From "we\'re fine" to "here\'s the plan": Writing Status Updates Leadership Actually Reads',
+    speaker:'Anna Kurylo', role:'Sr. Software Engineering Manager @ SentinelOne',
+    labels:['comms','em'],
+    description:'Status updaty selhávají dvěma způsoby: jsou zeď technických detailů, které vedení přeskočí — nebo vágní shrnutí, které nic neříká. Když vedení nevidí skutečný stav práce, nemůže pomoci, když věci jdou špatně — a přijdou překvapení. Workshop ukáže jak psát updaty, které vedení skutečně čte.',
+    bio:'Senior Software Engineering Manager v SentinelOne. Strategický přístup k engineering leadershipu a process design bez zbytečné režie. Zaměřená na výchovu budoucích lídrů a zlepšování efektivity týmů.'
+  },
+  {
+    id:'ws12', stage:'workshop', time:'14:50 – 15:30', isBreak:false,
+    title:'Same Code, Different Cultures: Managing Engineers Across Continents',
+    speaker:'Moustafa Aboelnaga', role:'Engineering Leader @ SolarWinds',
+    labels:['em','team'],
+    description:'Práce s inženýry po celém světě může být nesmírně obohacující — ale přináší unikátní výzvy. Workshop sdílí zkušenosti z řízení engineering týmů napříč různými zeměmi a regiony a ukazuje jak kulturní rozdíly ovlivňují styl komunikace, rozhodování a spolupráce.',
+    bio:'Engineering Manager v SolarWinds specializující se na backend, DevOps a site reliability engineering. 8+ let vedení cross-functional týmů, formování delivery practices a mentorování tech profesionálů.'
+  },
+  {
+    id:'ws13', stage:'workshop', time:'16:10 – 17:10', isBreak:false,
+    title:'Decide Like a Senior Leader: Live Lessons on Decision-Making Habits',
+    speaker:'Michal Poczwardowski', role:'Founder @ Perspectiveship',
+    labels:['mindset','strategy'],
+    description:'Live workshop verze přednášky z hlavní stage. Interaktivní cvičení na reálných scénářích — procvičíš si rozhodovací frameworky přímo v praxi s okamžitou zpětnou vazbou.',
+    bio:'Viz profil z hlavní stage přednášky.'
+  },
+  {
+    id:'ws14', stage:'workshop', time:'16:10 – 17:10', isBreak:false,
+    title:'Build an Elevator Pitch That Works For Networking and Job Interviews',
+    speaker:'Carol Palombini', role:'Tech Leadership Coach & Consultant',
+    labels:['comms','career'],
+    description:'Jak sestavit elevator pitch, který skutečně funguje — na networkingových akcích i v pracovních pohovorech. Praktická cvičení s okamžitou zpětnou vazbou. Odejdeš s konkrétním pitchem připraveným k okamžitému použití.',
+    bio:'Viz profil z hlavní stage přednášky.'
+  },
+  {
+    id:'ws15', stage:'workshop', time:'16:10 – 17:10', isBreak:false,
+    title:'Wake Up, Brew Coffee, Deploy Three Teams',
+    speaker:'Michal Licko', role:'CEO @ Visionvolve',
+    labels:['ai','team'],
+    description:'Je 8 ráno. Káva se vaří. Tři AI týmy už shipují — a ty jsi nenapsal ani řádek kódu. Hands-on workshop ukáže jak nasadit více agentic AI týmů paralelně, bez nutnosti kódování. Praktická ukázka budoucnosti engineeringu.',
+    bio:'CEO & Founder Visionvolve, praktik na čele agentic AI. Background v MSD (Fortune 50) a Productboard. Zakladatel AI Transformers Community (aitransformers.eu). Přednášel opening keynote o Agentic AI na Agentic AI Europe v Barceloně.'
+  },
+];
+
+let activeFilters = new Set();
+let selectedTalks = new Set();
+
+function renderLabels(labels) {
+  return labels.map(l => {
+    const info = LABELS[l];
+    return `<span class="label ${info.cls}">${info.emoji} ${info.text}</span>`;
+  }).join('');
+}
+
+function renderCard(talk) {
+  if (talk.isBreak) {
+    return `<div class="talk-card break-card" id="card-${talk.id}">
+      <div class="talk-time">${talk.time}</div>
+      <div class="talk-title" style="color:var(--muted);font-weight:400;font-size:0.84rem;">${talk.title}</div>
+    </div>`;
+  }
+  const hasBio = talk.bio && talk.bio.length > 10;
+  const canPlan = talk.labels.length > 0 || talk.speaker;
+  return `<div class="talk-card" id="card-${talk.id}" data-labels="${talk.labels.join(',')}" onclick="togglePlan('${talk.id}',event)">
+    ${canPlan ? `<button class="plan-btn" title="Přidat do plánu" onclick="togglePlan('${talk.id}',event)">⭐</button>` : ''}
+    <div class="talk-time">${talk.time}</div>
+    <div class="talk-title">${talk.title}</div>
+    <div class="talk-speaker"><strong>${talk.speaker}</strong>${talk.role ? ' · ' + talk.role : ''}</div>
+    ${talk.labels.length ? `<div class="labels">${renderLabels(talk.labels)}</div>` : ''}
+    ${talk.description ? `<div class="talk-desc">${talk.description}</div>` : ''}
+    ${hasBio ? `<button class="bio-toggle" onclick="toggleBio('${talk.id}',event)"><span id="arr-${talk.id}">▶</span> Bio řečníka</button>
+    <div class="bio-text" id="bio-${talk.id}">${talk.bio}</div>` : ''}
+  </div>`;
+}
+
+function renderAll() {
+  document.getElementById('mainStageCards').innerHTML = TALKS.filter(t => t.stage==='main').map(renderCard).join('');
+  document.getElementById('workshopCards').innerHTML  = TALKS.filter(t => t.stage==='workshop').map(renderCard).join('');
+  applyFilters();
+}
+
+function toggleBio(id, e) {
+  e.stopPropagation();
+  const bio = document.getElementById('bio-' + id);
+  const arr = document.getElementById('arr-' + id);
+  const open = bio.classList.toggle('visible');
+  arr.textContent = open ? '▼' : '▶';
+}
+
+function togglePlan(id, e) {
+  e.stopPropagation();
+  const talk = TALKS.find(t => t.id === id);
+  if (!talk || talk.isBreak) return;
+  const card = document.getElementById('card-' + id);
+  if (selectedTalks.has(id)) { selectedTalks.delete(id); card.classList.remove('selected'); }
+  else { selectedTalks.add(id); card.classList.add('selected'); }
+  renderPlan();
+}
+
+function renderPlan() {
+  const chips = document.getElementById('planChips');
+  if (!selectedTalks.size) { chips.innerHTML = '<span class="plan-empty">Klikni na ⭐ u přednášky a přidej ji do plánu</span>'; return; }
+  const sorted = TALKS.filter(t => selectedTalks.has(t.id))
+    .sort((a,b) => {
+      const [ah,am] = a.time.split(' ')[0].split(':').map(Number);
+      const [bh,bm] = b.time.split(' ')[0].split(':').map(Number);
+      return (ah*60+am)-(bh*60+bm);
+    });
+  chips.innerHTML = sorted.map(t =>
+    `<span class="plan-chip" onclick="scrollTo('${t.id}')" title="${t.title}">
+      ${t.time.split(' ')[0]} · ${t.title.length > 38 ? t.title.slice(0,38)+'…' : t.title}
+    </span>`
+  ).join('');
+}
+
+function scrollTo(id) {
+  document.getElementById('card-'+id)?.scrollIntoView({behavior:'smooth', block:'center'});
+}
+
+function applyFilters() {
+  const active = Array.from(activeFilters);
+  TALKS.forEach(talk => {
+    const card = document.getElementById('card-'+talk.id);
+    if (!card || talk.isBreak || !active.length) { card?.classList.remove('dimmed'); return; }
+    card.classList.toggle('dimmed', !active.every(f => talk.labels.includes(f)));
+  });
+}
+
+function clearFilters() {
+  activeFilters.clear();
+  document.querySelectorAll('.filter-btn[data-label]').forEach(b => b.classList.remove('active'));
+  applyFilters();
+}
+
+document.getElementById('filterRow').addEventListener('click', e => {
+  const btn = e.target.closest('.filter-btn[data-label]');
+  if (!btn) return;
+  const lbl = btn.dataset.label;
+  activeFilters.has(lbl) ? activeFilters.delete(lbl) : activeFilters.add(lbl);
+  btn.classList.toggle('active', activeFilters.has(lbl));
+  applyFilters();
+});
+
+renderAll();
+</script>
+</body>
+</html>
