@@ -30,23 +30,6 @@ docker pull ghcr.io/lcir/elc2026:latest
 docker run -p 8080:80 ghcr.io/lcir/elc2026:latest
 ```
 
-## Hardened deployment
-
-The container is compatible with read-only filesystems and non-root users. Example Docker Compose security config:
-
-```yaml
-user: "1001:1001"
-read_only: true
-tmpfs:
-  - /tmp:size=64m,noexec,nosuid
-cap_drop:
-  - ALL
-security_opt:
-  - no-new-privileges:true
-```
-
-Nginx listens on port **8080** — map it to any host port you need.
-
 ## CI/CD
 
 GitHub Actions builds and pushes the image to `ghcr.io/lcir/elc2026` on every push to `main`, for both `linux/amd64` and `linux/arm64` (Raspberry Pi 5).
