@@ -1,0 +1,17 @@
+{
+  "name": "ELC Conference 2026 — Plánovač",
+  "short_name": "ELC 2026",
+  "description": "Plánovač přednášek ELC Conference 2026",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f1117",
+  "theme_color": "#6c63ff",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

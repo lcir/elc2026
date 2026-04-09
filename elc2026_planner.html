@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ELC Conference 2026 — Plánovač</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#6c63ff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="ELC 2026">
   <style>
     :root {
       --bg: #0f1117;
@@ -532,6 +536,7 @@ document.getElementById('filterRow').addEventListener('click', e => {
 
 selectedTalks = loadPlan();
 renderAll();
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
 selectedTalks.forEach(id => document.getElementById('card-'+id)?.classList.add('selected'));
 renderPlan();
 </script>
